@@ -2,7 +2,8 @@
 
 This repository contains the code and data required to reproduce the figures and results reported in the paper:
 
-**“Memristive Quantum Spiking Neuron Based on a Trapped Ion.”**
+**“Experimental Realization of a Memristive Quantum Spiking
+Neuron with Fast-Dissipation and Slow-Gain Channels.”**
 
 In this work, a  quantum neuron is implemented using a trapped-ion platform.
 By engineering dissipation and gain channels, the system exhibits diverse neuronal firing patterns such as phasic, bursting, and adaptive responses.
@@ -154,6 +155,7 @@ These datasets include:
 * population measurements
 * simulation results
 * S_x and S_y expectation values
+* robustness_analysis
 
 All scripts read the corresponding datasets directly from this directory.
 
@@ -165,7 +167,8 @@ If you use this code or data in your research, please cite the associated paper:
 
 ```
 @article{Huang2026QuantumNeuron,
-title = {Memristive Quantum Spiking Neuron Based on a Trapped Ion},
+title = {Experimental Realization of a Memristive Quantum Spiking
+Neuron with Fast-Dissipation and Slow-Gain Channels},
 author = {Huang, Fuhua and ...},
 journal = {...},
 year = {2026}

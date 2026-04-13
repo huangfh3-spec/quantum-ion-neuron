@@ -6,7 +6,7 @@ ROOT = Path(__file__).resolve().parent
 
 scripts = [
     "scripts/fig2A.py",
-    "scripts/fig2B.py",
+    "scripts/fig2BandfigS5.py",
     "scripts/fig2C.py",
     "scripts/fig2D.py",
     "scripts/fig3A.py",
@@ -28,6 +28,7 @@ scripts = [
     "scripts/figS3C.py",
     "scripts/figS3D.py",
     "scripts/figS4.py",
+    "scripts/figS6.py",
 ]
 
 for rel in scripts:

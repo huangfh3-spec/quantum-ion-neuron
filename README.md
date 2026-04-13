@@ -2,7 +2,7 @@
 
 This repository contains the code and data required to reproduce the figures and results reported in the paper:
 
-**“Programmable Quantum Spiking Neuron Based on a Trapped Ion.”**
+**“Memristive Quantum Spiking Neuron Based on a Trapped Ion.”**
 
 In this work, a  quantum neuron is implemented using a trapped-ion platform.
 By engineering dissipation and gain channels, the system exhibits diverse neuronal firing patterns such as phasic, bursting, and adaptive responses.
@@ -24,7 +24,7 @@ quantum-spiking-neuron/
 │
 ├── scripts/                # Python scripts that generate figures
 │   ├── fig2A.py
-│   ├── fig2B.py
+│   ├── fig2BandfigS5.py
 │   ├── fig2C.py
 │   ├── fig2D.py
 │   ├── fig3A.py
@@ -45,8 +45,8 @@ quantum-spiking-neuron/
 │   ├── figS3B.py
 │   ├── figS3C.py
 │   ├── figS3D.py
-│   └── figS4.py
-│
+│   ├── figS4.py
+│   └── figS6.py
 ├── data/                   # Experimental and simulation data
 │   ├── S_x.csv
 │   ├── S_y.csv
@@ -107,10 +107,10 @@ You can also generate figures individually.
 
 For example:
 
-### Fig.2B
+### Fig.2B and Fig.S5
 
 ```
-python scripts/fig2B.py
+python scripts/fig2BandfigS5.py
 ```
 
 ### Fig.3A
@@ -165,7 +165,7 @@ If you use this code or data in your research, please cite the associated paper:
 
 ```
 @article{Huang2026QuantumNeuron,
-title = {Programmable Quantum Spiking Neuron Based on a Trapped Ion},
+title = {Memristive Quantum Spiking Neuron Based on a Trapped Ion},
 author = {Huang, Fuhua and ...},
 journal = {...},
 year = {2026}

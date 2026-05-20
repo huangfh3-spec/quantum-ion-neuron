@@ -186,7 +186,7 @@ ax.plot(tlist2, p1,
 # 绘制实验数据点（带误差条）
 ax.errorbar(pop_t, pop_y, yerr=pop_err, 
             fmt='o', color="#EE053F", markersize=15,  markeredgecolor="#8A1830",markeredgewidth=4, 
-            capsize=10, capthick=2, elinewidth=2,zorder=4,
+            capsize=6, capthick=2, elinewidth=2,zorder=4,
             label='Experiment')
 ax.set_xlabel('Time(μs)', fontweight='bold', labelpad=5)
 
@@ -195,7 +195,7 @@ ax.set_xlabel('Time(μs)', fontweight='bold', labelpad=5)
 ax.set_ylabel(r'$\mathbf{|1\rangle \ }$Population',fontweight='bold', labelpad=5)
 
 # 设置合理的数据显示范围（根据实际数据调整）
-ax.set_ylim([0.1, 0.28])  # 假设布居数在-1到1之间
+ax.set_ylim([0.08, 0.28])  # 假设布居数在-1到1之间
 
 # 设置图例
 legend = ax.legend(
@@ -223,6 +223,12 @@ ax.tick_params(axis='both', which='major', length=6, width=2)
 ax.tick_params(axis='both', which='minor', length=4, width=1)
 # 确保布局紧凑
 plt.tight_layout()
+import os
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+save_path = os.path.join(HERE, "Spiking_population.svg")
+
+plt.savefig(save_path, bbox_inches='tight')
 # plt.savefig('spiking_population.svg', format='svg', bbox_inches='tight')
 # plt.savefig('spiking_voltage.svg', format='svg', bbox_inches='tight')
 plt.show()

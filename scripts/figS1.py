@@ -11,19 +11,18 @@ from scipy.signal import argrelmax, argrelmin
 import pandas as pd  
 from matplotlib.ticker import MaxNLocator, AutoMinorLocator
 import matplotlib as mpl
-import sys
 from pathlib import Path
 
 # 让 Python 能找到仓库根目录
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-
-from paths import DATA
+SCRIPT_DIR = Path(__file__).resolve().parent
+DATA = SCRIPT_DIR / "Fig_data"
+if not DATA.is_dir():
+    raise FileNotFoundError(f"Figure data directory not found: {DATA}")
 # ====================== 全局参数 ========================
 dim = 7  # 七能级系统
 total_t = 160
 delta = 0.040
-Delta = -2.615 * 2 * np.pi  # 角频率
+Delta = -5.23 * 2 * np.pi  # 角频率
 dt =4
 N=total_t//dt
 measure_times =int(total_t // dt + 1)
@@ -113,7 +112,7 @@ tomo_y=[0.5]
 J2=[]
 states = (basis_states[1]+basis_states[0] ).unit()
 
-for i in range(measure_times - 1): 
+for i in range(measure_times - 2): 
       #i 从0-159
     H2 = build_Hamiltonian(J1[i])
     result = mesolve(
@@ -216,8 +215,8 @@ I1 = -0.75 * np.array(Sy1)
 
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-Sx_path = DATA / "S_x.csv"
-Sy_path = DATA / "S_y.csv"
+Sx_path = DATA / "sx_mean.csv"
+Sy_path = DATA / "sy_mean.csv"
 # 读取 CSV
 df = pd.read_csv(Sx_path, header=None)
 
@@ -256,7 +255,7 @@ plt.rcParams.update({
     'grid.alpha': 0.3
 })
 fig = plt.figure(figsize=(10,5.5), dpi=200)
-plt.plot(tlist2, sigmay, linewidth=2.5, color='blue', label=r'$\mathbf{S_y}$ ')
+plt.plot(t2, sigmay, linewidth=2.5, color='blue', label=r'$S_\mathrm{y}$ ')
 plt.errorbar(t2, Sy_exp, yerr=Sy_err, 
              fmt='o', 
              color='blue', 
@@ -269,7 +268,7 @@ plt.errorbar(t2, Sy_exp, yerr=Sy_err,
 
              capthick=0.7)
             #  label=r'$\mathbf{\sigma_y}$ experiment')
-plt.plot(tlist2, sigmax, color='red', linewidth=2.5, label=r'$\mathbf{S_x}$ ')
+plt.plot(t2, sigmax, color='red', linewidth=2.5, label=r'$S_\mathrm{x}$ ')
 plt.errorbar(t2, Sx_exp, yerr=Sx_err, 
              fmt='o', 
              color='red', 
@@ -293,8 +292,8 @@ ax.grid(True, alpha=0.4, linestyle='-', linewidth=0.8)
 ax.grid(True, which='minor', alpha=0.2, linestyle='--', linewidth=0.5)
 
 # 设置坐标轴标签和标题字体为Arial，颜色为黑色
-plt.xlabel('Time (μs)', fontweight='bold', fontsize=30, fontname='Arial', color='black')
-plt.ylabel(r'$\mathbf{S_y}(\mathbf{S_x})$', fontsize=30, fontname='Arial', color='black')
+plt.xlabel('Time (μs)', fontsize=30, fontname='Arial', color='black')
+plt.ylabel(r'$S_\mathrm{y}(S_\mathrm{x})$', fontsize=30, fontname='Arial', color='black')
 # plt.title(r'$\mathbf{\sigma_y}(\mathbf{\sigma_x})$ Comparison', fontweight='bold', fontsize=30, fontname='Arial')
 
 # 设置刻度标签字体为Arial，颜色为黑色
@@ -336,7 +335,12 @@ legend.get_frame().set_facecolor('white')
 
 plt.tight_layout()
 # plt.savefig('sigma_comparison.svg', format='svg', bbox_inches='tight')
+import os
 
+HERE = os.path.dirname(os.path.abspath(__file__))
+save_path = os.path.join(HERE, "Fig.S1.svg")
+
+plt.savefig(save_path, bbox_inches='tight')
 plt.legend()
 
 

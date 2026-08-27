@@ -11,14 +11,13 @@ from matplotlib.ticker import ScalarFormatter, AutoMinorLocator, MaxNLocator, Fi
 from scipy.optimize import minimize_scalar
 from scipy import stats
 from qutip import *
-import sys
 from pathlib import Path
 
 # 让 Python 能找到仓库根目录
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-
-from paths import DATA
+SCRIPT_DIR = Path(__file__).resolve().parent
+DATA = SCRIPT_DIR / "Fig_data"
+if not DATA.is_dir():
+    raise FileNotFoundError(f"Figure data directory not found: {DATA}")
 # ==========================================================
 # Config: files in same folder
 # ==========================================================
@@ -489,8 +488,8 @@ def main():
                 zorder=4, s=40, color="#F8083C",
                 edgecolors="#8A1830", linewidths=2)
 
-    ax2.set_xlabel('Time (μs)', fontweight='bold', labelpad=10)
-    ax1.set_ylabel(r'$\mathbf{V}_\mathbf{q}$', fontweight='bold', labelpad=7)
+    ax2.set_xlabel('Time (μs)', labelpad=10)
+    ax1.set_ylabel(r'$V_\mathbf{q}$', fontweight='bold', labelpad=7)
 
     ax1.yaxis.set_major_formatter(ScalarFormatter(useMathText=True))
     ax1.yaxis.set_major_locator(MaxNLocator(4))
@@ -500,7 +499,7 @@ def main():
     ax1.set_facecolor('#f8f9fa')
     # ax1.legend(frameon=False, loc="upper right")
 
-    ax2.set_ylabel('Signal', fontweight='bold', labelpad=22)
+    ax2.set_ylabel(r'$y$',labelpad=22)
     ax2.yaxis.set_major_locator(FixedLocator([-1, 1]))
     ax2.set_ylim(-1.1, 1.1)
     ax2.grid(True, alpha=0.3, linestyle='-', linewidth=0.6)
@@ -517,6 +516,12 @@ def main():
         ax2.axvline(x=time_point, color='gray', linestyle=':', alpha=0.4, linewidth=0.8)
 
     fig.patch.set_facecolor('white')
+    import os
+
+    HERE = os.path.dirname(os.path.abspath(__file__))
+    save_path = os.path.join(HERE, "bursting_Vq.svg")
+
+    plt.savefig(save_path, bbox_inches='tight')
     plt.tight_layout()
     plt.show()
 

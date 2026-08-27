@@ -14,8 +14,9 @@ Memristor variables:
 from __future__ import annotations
 
 import ast
+import itertools
 import re
-import sys
+import shutil
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
@@ -39,9 +40,10 @@ warnings.filterwarnings(
 )
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-
-from paths import DATA  # noqa: E402
+SCRIPT_DIR = Path(__file__).resolve().parent
+DATA = SCRIPT_DIR / "Fig_data"
+if not DATA.is_dir():
+    raise FileNotFoundError(f"Figure data directory not found: {DATA}")
 
 
 # ------------------------ User-facing parameters ------------------------
@@ -60,7 +62,7 @@ FFT_CUTOFF_RATIO = 0.35  # main-figure default; keep aligned with Fig. 2B if nee
 # nominal cutoff = 0.35 f_max; tested cutoffs = 0.25--0.45 f_max.
 ROBUSTNESS_NOMINAL_RATIO = 0.35
 ROBUSTNESS_RATIOS = (0.25, 0.30, 0.35, 0.40, 0.45)
-N_GROUP_BOOT = 10000
+N_GROUP_BOOT = 5**5
 # N_SHOT_BOOT = 2000
 N_BOOT_PLOT = 5
 RNG_SEED = 20260515
@@ -68,8 +70,11 @@ RNG_SEED = 20260515
 STOKES_DIR = DATA
 STOKES_BASENAME = "Stokes_memristor"
 N_STOKES_GROUPS = 5
-OUTPUT_DIR = Path(__file__).resolve().parent / "figures" 
+OUTPUT_DIR = Path(__file__).resolve().parent / "figures"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+SUPPLEMENTARY_OUTPUT_DIR = ROOT / "figures" / "supplementary"
+SUPPLEMENTARY_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+SCIENCE_TEMPLATE_DIR = ROOT / "science_template"
 
 QUTIP_OPTIONS = Options(nsteps=1500000)
 
@@ -220,31 +225,31 @@ def loop_area(iq: np.ndarray, vq: np.ndarray) -> float:
     return float(np.trapz(vq_closed, iq_closed))
 
 
-def group_bootstrap_loops(
-    i_rep: np.ndarray,
-    v_rep: np.ndarray,
-    n_boot: int = N_GROUP_BOOT,
-    seed: int = RNG_SEED,
-) -> dict[str, np.ndarray]:
-    """Bootstrap mean Iq-Vq trajectories by resampling complete repeated groups."""
-    rng = np.random.default_rng(seed)
-    i_rep = np.asarray(i_rep, dtype=float)
-    v_rep = np.asarray(v_rep, dtype=float)
-    if i_rep.shape != v_rep.shape:
-        raise ValueError("I and V replicate arrays must have the same shape.")
+# def group_bootstrap_loops(
+#     i_rep: np.ndarray,
+#     v_rep: np.ndarray,
+#     n_boot: int = N_GROUP_BOOT,
+#     seed: int = RNG_SEED,
+# ) -> dict[str, np.ndarray]:
+#     """Bootstrap mean Iq-Vq trajectories by resampling complete repeated groups."""
+#     rng = np.random.default_rng(seed)
+#     i_rep = np.asarray(i_rep, dtype=float)
+#     v_rep = np.asarray(v_rep, dtype=float)
+#     if i_rep.shape != v_rep.shape:
+#         raise ValueError("I and V replicate arrays must have the same shape.")
 
-    n_groups, n_points = i_rep.shape
-    boot_i = np.empty((n_boot, n_points), dtype=float)
-    boot_v = np.empty((n_boot, n_points), dtype=float)
-    boot_area = np.empty(n_boot, dtype=float)
+#     n_groups, n_points = i_rep.shape
+#     boot_i = np.empty((n_boot, n_points), dtype=float)
+#     boot_v = np.empty((n_boot, n_points), dtype=float)
+#     boot_area = np.empty(n_boot, dtype=float)
 
-    for k in range(n_boot):
-        idx = rng.integers(0, n_groups, size=n_groups)
-        boot_i[k] = np.mean(i_rep[idx], axis=0)
-        boot_v[k] = np.mean(v_rep[idx], axis=0)
-        boot_area[k] = loop_area(boot_i[k], boot_v[k])
+#     for k in range(n_boot):
+#         idx = rng.integers(0, n_groups, size=n_groups)
+#         boot_i[k] = np.mean(i_rep[idx], axis=0)
+#         boot_v[k] = np.mean(v_rep[idx], axis=0)
+#         boot_area[k] = loop_area(boot_i[k], boot_v[k])
 
-    return {"I": boot_i, "V": boot_v, "area": boot_area}
+#     return {"I": boot_i, "V": boot_v, "area": boot_area}
 
 
 def fft_lowpass(signal: np.ndarray, cutoff: float, sample_step: float) -> np.ndarray:
@@ -328,15 +333,12 @@ def reconstruct_mean_then_fft_loop(
 def group_bootstrap_mean_then_fft(
     sx_reps: np.ndarray,
     sy_reps: np.ndarray,
-    n_boot: int = N_GROUP_BOOT,
-    seed: int = RNG_SEED,
     sample_step: float = STEP,
     delta: float = DELTA,
     cutoff_ratio: float = FFT_CUTOFF_RATIO,
     apply_fft: bool = True,
 ) -> dict[str, np.ndarray]:
-    """Bootstrap by resampling groups, averaging Sx/Sy, reconstructing, then FFT filtering."""
-    rng = np.random.default_rng(seed)
+    """Exhaustively enumerate all group-level bootstrap resamples."""
     sx_reps = np.asarray(sx_reps, dtype=float)
     sy_reps = np.asarray(sy_reps, dtype=float)
     if sx_reps.shape != sy_reps.shape:
@@ -344,12 +346,13 @@ def group_bootstrap_mean_then_fft(
 
     n_groups = sx_reps.shape[0]
     n_points = sx_reps.shape[1] - 2
+    n_boot = n_groups**n_groups
     boot_i = np.empty((n_boot, n_points), dtype=float)
     boot_v = np.empty((n_boot, n_points), dtype=float)
     boot_area = np.empty(n_boot, dtype=float)
 
-    for k in range(n_boot):
-        idx = rng.integers(0, n_groups, size=n_groups)
+    for k, idx_tuple in enumerate(itertools.product(range(n_groups), repeat=n_groups)):
+        idx = np.asarray(idx_tuple, dtype=int)
         rec = reconstruct_mean_then_fft_loop(
             sx_reps[idx],
             sy_reps[idx],
@@ -362,7 +365,7 @@ def group_bootstrap_mean_then_fft(
         boot_v[k] = rec["V_fft"]
         boot_area[k] = loop_area(boot_i[k], boot_v[k])
 
-    return {"I": boot_i, "V": boot_v, "area": boot_area}
+    return {"I": boot_i, "V": boot_v, "area": boot_area, "n_resamples": np.asarray(n_boot)}
 
 
 def smooth_bootstrap_vq(
@@ -599,6 +602,19 @@ def save_figure(fig: plt.Figure, path: Path) -> Path:
         return fallback
 
 
+def copy_figure(src: Path, dst: Path) -> Path:
+    """Copy a generated figure to the manuscript figure folder."""
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        shutil.copy2(src, dst)
+        return dst
+    except PermissionError:
+        fallback = dst.with_name(f"{dst.stem}_new{dst.suffix}")
+        shutil.copy2(src, fallback)
+        print(f"Warning: {dst} is locked. Copied fallback file to {fallback}.")
+        return fallback
+
+
 def create_fig2b_count_bootstrap(
     rec: dict[str, np.ndarray],
     boot: dict[str, np.ndarray],
@@ -639,8 +655,8 @@ def create_fig2b_count_bootstrap(
     area_nominal = loop_area(rec["I_fft"], rec["V_fft"])
     area_ci = np.percentile(boot["area"], [2.5, 97.5])
     area_text = (
-    "$\\mathrm{A}_{\\mathrm{loop}}$ = %.2g\n"
-    "n = %d groups"
+    "$A_{\\mathrm{loop}}$ = %.2g\n"
+    "$n$ = %d groups"
     % (area_nominal, len(labels))
 )
     ax.text(
@@ -654,8 +670,8 @@ def create_fig2b_count_bootstrap(
         bbox=dict(boxstyle="round,pad=0.55", facecolor="white", alpha=0.85, edgecolor="none"),
     )
 
-    ax.set_xlabel(r'$\mathbf{I_q}$', fontweight='bold', fontname='Arial', labelpad=5, color='black')
-    ax.set_ylabel(r'$\mathbf{V_q}$', fontweight='bold', fontname='Arial', labelpad=5, color='black')
+    ax.set_xlabel(r'$I_\mathrm{q}$', fontweight='bold', fontname='Arial', labelpad=5, color='black')
+    ax.set_ylabel(r'$V_\mathrm{q}$', fontweight='bold', fontname='Arial', labelpad=5, color='black')
 
     formatter = ScalarFormatter(useMathText=True)
     formatter.set_scientific(True)
@@ -679,7 +695,7 @@ def create_figs5_count_uncertainty(
     v_sim: np.ndarray,
     save_stem: str = "FigS5",
 ) -> tuple[plt.Figure, tuple[plt.Axes, plt.Axes]]:
-    """Create supplementary Vq uncertainty panel and bootstrap area histogram."""
+    """Create supplementary Vq uncertainty panel and exhaustive area histogram."""
     t_mid = rec["t_mid"]
     if boot["V"].shape[1] != t_mid.size:
         raise ValueError(
@@ -705,7 +721,7 @@ def create_figs5_count_uncertainty(
         color="#1F4AFF",
         alpha=0.08,
         linewidth=0,
-        label="95% FFT-bootstrap band",
+        label="95% exhaustive band",
         zorder=1,
     )
     ax_vq.fill_between(
@@ -715,22 +731,22 @@ def create_figs5_count_uncertainty(
         color="#1F4AFF",
         alpha=0.18,
         linewidth=0,
-        label="68% FFT-bootstrap band",
+        label="68% exhaustive band",
         zorder=2,
     )
     ax_vq.plot(t_mid, rec["V_raw"], color="0.25", alpha=0.48, linewidth=2.0, label="Raw mean")
     ax_vq.plot(t_sim[: len(v_sim)], v_sim, color="#F18F01", linewidth=2.6, label="Simulation")
     ax_vq.plot(t_mid, rec["V_fft"], color="#1F4AFF", linestyle="--", linewidth=2.8, label="FFT")
-    ax_vq.set_xlabel(r'Time (us)', fontname='Arial',
-              fontweight='bold',
+    ax_vq.set_xlabel(r'Time (μs)', fontname='Arial',
+              
               fontstyle='normal',
-              labelpad=3,
+              labelpad=5,
               color='black',fontsize=24)
-    ax_vq.set_ylabel(r'$\mathbf{V_q}$', fontweight='bold', fontname='Arial', labelpad=3,fontsize=24, color='black')
+    ax_vq.set_ylabel(r'$V_\mathrm{q}$', fontweight='bold', fontname='Arial', labelpad=5,fontsize=24, color='black')
 
 
     
-    style_legend(ax_vq, fontsize=9.3, loc="best")
+    style_legend(ax_vq, fontsize=13, loc="best")
     polish_axes(ax_vq)
     ax_vq.yaxis.set_major_locator(MaxNLocator(6))
     ax_vq.ticklabel_format(style="sci", axis="y", scilimits=(-2, 2))
@@ -746,16 +762,19 @@ def create_figs5_count_uncertainty(
         linewidth=0.25,
     )
     ax_hist.axvline(area_nominal, color="black", linestyle="--", linewidth=1.4, label="Nominal area")
-    ax_hist.axvspan(area_ci[0], area_ci[1], color="#1F4AFF", alpha=0.12, label="95% area CI")
-    ax_hist.set_xlabel(r"$\mathrm{A}_{\mathbf{loop}} $", fontweight="bold")
-    ax_hist.set_ylabel("Bootstrap count", fontweight="bold")
-    style_legend(ax_hist, fontsize=9.0, loc="best")
+    ax_hist.axvspan(area_ci[0], area_ci[1], color="#1F4AFF", alpha=0.12, label="95% area interval")
+    ax_hist.set_xlabel(r"$A_{\mathrm{loop}}$", fontweight="bold", fontname="Arial", labelpad=5, fontsize=24)
+    ax_hist.set_ylabel("Exhaustive count",  fontname="Arial", labelpad=5, fontsize=24)
+    style_legend(ax_hist, fontsize=13, loc="best")
     polish_axes(ax_hist)
     ax_hist.ticklabel_format(style="sci", axis="x", scilimits=(-2, 2))
     apply_arial_to_figure(fig)
 
-    save_figure(fig, OUTPUT_DIR / f"{save_stem}.svg")
-    save_figure(fig, OUTPUT_DIR / f"{save_stem}.pdf")
+    svg_path = save_figure(fig, OUTPUT_DIR / f"{save_stem}.svg")
+    pdf_path = save_figure(fig, OUTPUT_DIR / f"{save_stem}.pdf")
+    copy_figure(pdf_path, SUPPLEMENTARY_OUTPUT_DIR / "Fig.S5.pdf")
+    copy_figure(pdf_path, SCIENCE_TEMPLATE_DIR / "Fig.S5.pdf")
+    plt.show()
     return fig, (ax_vq, ax_hist)
 
 
@@ -918,7 +937,7 @@ def main() -> None:
     export_summary_tables(sx_reps, sy_reps, labels, rec, boot, old_v_sem, replicate_rec)
     robustness_df = export_cutoff_robustness(sx_reps, sy_reps)
 
-    print("Saved count-bootstrap figures and tables to:", OUTPUT_DIR)
+    print("Saved exhaustive-bootstrap figures and tables to:", OUTPUT_DIR)
     print("Vq length:", rec["V_fft"].shape[0])
     print("FFT cutoff ratio to f_max:", rec["cutoff_ratio"])
     print("FFT f_max:", rec["f_max"])

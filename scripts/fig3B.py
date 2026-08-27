@@ -8,14 +8,13 @@ from matplotlib.ticker import ScalarFormatter, AutoMinorLocator, MaxNLocator, Fi
 from scipy.optimize import minimize_scalar
 from scipy import stats
 from qutip import *
-import sys
 from pathlib import Path
 
 # 让 Python 能找到仓库根目录
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-
-from paths import DATA
+SCRIPT_DIR = Path(__file__).resolve().parent
+DATA = SCRIPT_DIR / "Fig_data"
+if not DATA.is_dir():
+    raise FileNotFoundError(f"Figure data directory not found: {DATA}")
 # ==========================================================
 # Config: files in the same folder as this script
 # ==========================================================
@@ -297,7 +296,7 @@ def run_simulation(total_t=160, measure_times=161):
         states = result1.states[-1]
 
     t = tlist2[:measure_times - 1]  # 160 points
-    return t, np.array(I1), np.array(gamma1), np.array(v_m), np.array(signal), float(bias)
+    return t, np.asarray(I1), np.asarray(gamma1), np.asarray(v_m), np.asarray(signal), float(bias)
 
 # ==========================================================
 # Main
@@ -335,18 +334,18 @@ fig, (ax1, ax2) = plt.subplots(
     gridspec_kw={'hspace': 0, 'height_ratios': [1.5, 1]}
 )
 
-ax1.plot(t_sim, v_sim, color="#0D6412", linewidth=4, alpha=0.95, zorder=3, solid_capstyle='round', label="Simulation")
+ax1.plot(t_sim, v_sim, color="#0DE7E7", linewidth=4, alpha=0.95, zorder=3, solid_capstyle='round', label="Simulation")
 ax1.errorbar(t_sim, v_exp, yerr=v_exp_err, fmt='o', color="#EE053F", markersize=6,
              markeredgecolor="#8A1830", markeredgewidth=2,
              capsize=6, capthick=2, elinewidth=1, zorder=4, label="Experiment (CSV)")
 
 ax1.axhline(y=-bias, color="#EE0B0B", linestyle='--', linewidth=4)
 
-ax2.plot(t_sim, signal_sim, color="#0D6412", linewidth=4, alpha=0.95, zorder=3, solid_capstyle='round')
+ax2.plot(t_sim, signal_sim, color="#0DE7E7", linewidth=4, alpha=0.95, zorder=3, solid_capstyle='round')
 ax2.scatter(t_sim, signal_exp, zorder=4, s=40, color="#F8083C", edgecolors="#8A1830", linewidths=2)
 
-ax2.set_xlabel('Time (μs)', fontweight='bold', labelpad=10)
-ax1.set_ylabel(r'$\mathbf{V}_\mathbf{q}$', fontweight='bold', labelpad=7)
+ax2.set_xlabel('Time (μs)', labelpad=10)
+ax1.set_ylabel(r'$V_\mathbf{q}$', fontweight='bold', labelpad=7)
 
 ax1.yaxis.set_major_formatter(ScalarFormatter(useMathText=True))
 ax1.yaxis.set_major_locator(MaxNLocator(5))
@@ -356,7 +355,7 @@ ax1.grid(True, alpha=0.3, linestyle='-', linewidth=0.6)
 ax1.set_facecolor('#f8f9fa')
 # ax1.legend(frameon=False, loc="upper right")
 
-ax2.set_ylabel('Signal', fontweight='bold', labelpad=22)
+ax2.set_ylabel(r'$y$', fontweight='bold', labelpad=22)
 ax2.yaxis.set_major_locator(FixedLocator([-1, 1]))
 ax2.set_ylim(-1.1, 1.1)
 ax2.grid(True, alpha=0.3, linestyle='-', linewidth=0.6)
@@ -373,6 +372,12 @@ for time_point in t_sim[::max(1, len(t_sim)//8)]:
     ax2.axvline(x=time_point, color='gray', linestyle=':', alpha=0.4, linewidth=0.8)
 
 fig.patch.set_facecolor('white')
+import os
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+save_path = os.path.join(HERE, "phasic_Vq.svg")
+
+plt.savefig(save_path, bbox_inches='tight')
 plt.tight_layout()
 plt.show()
 

@@ -4,14 +4,13 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator, AutoMinorLocator
 from qutip import *
-import sys
 from pathlib import Path
 
 # 让 Python 能找到仓库根目录
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-
-from paths import DATA
+SCRIPT_DIR = Path(__file__).resolve().parent
+DATA = SCRIPT_DIR / "Fig_data"
+if not DATA.is_dir():
+    raise FileNotFoundError(f"Figure data directory not found: {DATA}")
 # =======================
 # Matplotlib
 # =======================
@@ -176,16 +175,30 @@ for i in range(measure_times - 1):
 # Plot population
 # =======================
 mpl.rcParams.update({
+    'font.family': 'Arial',
+    'font.sans-serif': ['Arial'],
+    'mathtext.fontset': 'custom',
+    'mathtext.rm': 'Arial',
+    'mathtext.it': 'Arial:italic',
+    'mathtext.bf': 'Arial:bold',
+    'axes.unicode_minus': False,
+
     'font.size': 20,
-    'axes.labelsize': 22,
-    'legend.fontsize': 18,
-    'axes.linewidth': 2
+    'axes.titlesize': 30,
+    'axes.labelsize': 25,
+    'xtick.labelsize': 25,
+    'ytick.labelsize': 25,
+    'legend.fontsize': 20,
+    'figure.titlesize': 20,
+
+    'axes.linewidth': 2,
+    'grid.alpha': 0.3,
 })
 
 fig, ax = plt.subplots(figsize=(12, 7), dpi=200)
 
 ax.plot(tlist2, p1, 
-        color="#025E11",  # 专业橙色
+        color="#0DE7E7",  # 专业橙色
         linewidth=7, 
         label='Simulation ', 
         alpha=0.95, 
@@ -194,21 +207,21 @@ ax.plot(tlist2, p1,
 # 绘制实验数据点（带误差条）
 ax.errorbar(pop_t, pop_y, yerr=pop_err, 
             fmt='o', color="#EE053F", markersize=15,  markeredgecolor="#8A1830",markeredgewidth=4, 
-            capsize=6, capthick=2, elinewidth=2,zorder=4,
+            capsize=10, capthick=2, elinewidth=2,zorder=4,
             label='Experiment')
-ax.set_xlabel('Time(μs)', fontweight='bold', labelpad=5)
+ax.set_xlabel('Time (μs)', labelpad=5)
 
 # 设置坐标轴标签
 
-ax.set_ylabel(r'$\mathbf{|1\rangle \ }$Population',fontweight='bold', labelpad=5)
+ax.set_ylabel(r'$\mathrm{|1\rangle \ }$Population',labelpad=5)
 
 # 设置合理的数据显示范围（根据实际数据调整）
-ax.set_ylim([0.10, 0.30])  # 假设布居数在-1到1之间
+ax.set_ylim([0.14, 0.28])  # 假设布居数在-1到1之间
 
 # 设置图例
 legend = ax.legend(
     loc='upper right',
-    prop={'weight': 'bold'},
+    
     frameon=True,
     fancybox=True,
     shadow=True,

@@ -104,17 +104,17 @@ boundary_proxy = Line2D(
 
 # 四个实验点（归一化坐标）
 points = {
-    "A": (1.44, 0.0),
-    "B": (1.44, 2.3),
-    "C": (1.0, 0.0),
-    "D": (1.0, 2.3),
+    "a": (1.44, 0.0),
+    "b": (1.44, 2.3),
+    "c": (1.0, 0.0),
+    "d": (1.0, 2.3),
 }
 
 for label, (gx, Gy) in points.items():
     ax.scatter(
         gx, Gy,
         s=140,
-        c="red",
+        c="#E60EE6",
         edgecolors="black",
         linewidths=2,
         zorder=5
@@ -127,8 +127,8 @@ for label, (gx, Gy) in points.items():
     )
 
 # 坐标轴（直立体 + 加粗）
-ax.set_xlabel(r"$\mathrm{\gamma_{eff}/\gamma_T}$", fontweight="bold")
-ax.set_ylabel(r"$\mathrm{G_{eff}/\gamma_T}$", fontweight="bold")
+ax.set_xlabel(r"$\gamma_\mathrm{eff}/\gamma_\mathrm{T}$", fontweight="bold")
+ax.set_ylabel(r"$G_\mathrm{eff}/\gamma_\mathrm{T}$", fontweight="bold")
 # ax.set_title("(a) 2D decision map")
 
 # 刻度加粗
@@ -155,14 +155,14 @@ ax.plot(
     gamma_n, D_1d,
     lw=4,
     color="black",
-    label=rf"$\mathrm{{G/\gamma_T={G_n[iG]:.2f}}}$"
+    label=r"$G/\gamma_\mathrm{T}$" f"$={G_n[iG]:.2f}$"
 )
 
 ax.axhline(
     0,
     ls="--",
     lw=3,
-    color="b",
+    color="red",
     label=r"Threshold ($\kappa=0$)"
 )
 
@@ -174,12 +174,13 @@ ax.scatter(
         D_1d[np.argmin(np.abs(gamma_n - 1.44))]
     ],
     s=120,
-    c="red",
+    c="#E60EE6",
+    edgecolors="black",
     zorder=5
 )
 
-ax.set_xlabel(r"$\mathrm{\gamma_{eff}/\gamma_T}$", fontweight="bold")
-ax.set_ylabel(r"$\mathrm{\kappa}$", fontweight="bold")
+ax.set_xlabel(r"$\gamma_\mathrm{eff}/\gamma_\mathrm{T}$", fontweight="bold")
+ax.set_ylabel(r"$\kappa$", fontweight="bold")
 # ax.set_title(r"(b) 1D activation (fixed $\mathrm{G/\gamma_T=0.5}$)")
 
 # y 轴科学计数
@@ -197,10 +198,10 @@ ax.grid(alpha=0.3)
 # 输出
 # ======================================================
 plt.tight_layout()
-# import os
+import os
 
-# HERE = os.path.dirname(os.path.abspath(__file__))
-# save_path = os.path.join(HERE, "Fig4A_B.svg")
+HERE = os.path.dirname(os.path.abspath(__file__))
+save_path = os.path.join(HERE, "Fig4A_B.svg")
 
-# plt.savefig(save_path, bbox_inches='tight')
+plt.savefig(save_path, bbox_inches='tight')
 plt.show()

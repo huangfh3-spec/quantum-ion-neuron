@@ -1,25 +1,31 @@
 
 import math
-import sys
+import shutil
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from matplotlib import colors
 from matplotlib.lines import Line2D
 from matplotlib.ticker import MaxNLocator, AutoMinorLocator
 from scipy.optimize import curve_fit
 
 # ===================== paths =====================
-try:
-    ROOT = Path(__file__).resolve().parents[1]
-    sys.path.insert(0, str(ROOT))
-    from paths import DATA  # type: ignore
-except Exception:
-    DATA = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[1]
+SCRIPT_DIR = Path(__file__).resolve().parent
+DATA = SCRIPT_DIR / "Fig_data"
+if not DATA.is_dir():
+    raise FileNotFoundError(f"Figure data directory not found: {DATA}")
 
-HERE = Path('/mnt/data')  # always writable
+HERE = SCRIPT_DIR
+FIGURES = ROOT / "figures"
+SUPPLEMENTARY_OUTPUT_DIR = FIGURES / "supplementary"
+SCIENCE_TEMPLATE_DIR = ROOT / "science_template"
+SCIENCE_V2_FIGURES_DIR = ROOT.parent / "Science_v2" / "figures"
+for _out_dir in (SUPPLEMENTARY_OUTPUT_DIR, SCIENCE_TEMPLATE_DIR, SCIENCE_V2_FIGURES_DIR):
+    _out_dir.mkdir(parents=True, exist_ok=True)
 
 # ===================== style =====================
 mpl.rcParams.update({
@@ -92,10 +98,10 @@ def build_cases():
     t_low, i_low, _ = read_waveform(DATA / 'I_low_waveform.csv')
 
     cases = {
-        'C1': {'wave_t': t_high, 'wave_i': i_high, 'pop': DATA / 'High_Low_data.csv', 'expected': 1},
-        'C2': {'wave_t': t_high, 'wave_i': i_high, 'pop': DATA / 'High_High_data.csv', 'expected': 0},
-        'C3': {'wave_t': t_low,  'wave_i': i_low,  'pop': DATA / 'Low_Low_data.csv',  'expected': 0},
-        'C4': {'wave_t': t_low,  'wave_i': i_low,  'pop': DATA / 'Low_High_data.csv', 'expected': 1},
+        'a': {'wave_t': t_high, 'wave_i': i_high, 'pop': DATA / 'High_Low_data.csv', 'expected': 1},
+        'b': {'wave_t': t_high, 'wave_i': i_high, 'pop': DATA / 'High_High_data.csv', 'expected': 0},
+        'c': {'wave_t': t_low,  'wave_i': i_low,  'pop': DATA / 'Low_Low_data.csv',  'expected': 0},
+        'd': {'wave_t': t_low,  'wave_i': i_low,  'pop': DATA / 'Low_High_data.csv', 'expected': 1},
     }
     for _, info in cases.items():
         gamma, gamma_err = fit_gamma(info['pop'])
@@ -107,18 +113,21 @@ def build_cases():
 CASES = build_cases()
 BASELINE_B = 1.6e-3
 BASELINE_WINDOW = (45, 65)
+WINDOW_SCAN_STEP = 1.0
+WINDOW_STARTS = np.arange(40, 61)
+WINDOW_ENDS = np.arange(50, 71)
 
 COLORS = {
-    'C1': '#F0850A',
-    'C2': '#D93A49',
-    'C3': '#50647F',
-    'C4': '#009688',
+    'a': '#F0850A',
+    'b': '#D93A49',
+    'c': '#50647F',
+    'd': '#009688',
 }
 LABELS = {
-    'C1': 'C1 (firing)',
-    'C2': 'C2 (no firing)',
-    'C3': 'C3 (no firing)',
-    'C4': 'C4 (firing)',
+    'a': 'a (firing)',
+    'b': 'b (no firing)',
+    'c': 'c (no firing)',
+    'd': 'd (firing)',
 }
 
 def classify(case_key: str, start: float, end: float, b: float):
@@ -133,6 +142,7 @@ def signed_margin(case_key: str, start: float, end: float, b: float):
     expected = CASES[case_key]['expected']
     return margin if expected == 1 else -margin
 
+
 def analyze_xor_robustness():
     threshold_scan = []
     for b in np.linspace(0.0010, 0.0022, 301):
@@ -141,14 +151,16 @@ def analyze_xor_robustness():
         threshold_scan.append({"threshold": b, "stable": ok})
 
     window_scan = []
-    for start in range(40, 50):
-        for end in range(60, 70):
+    for start in WINDOW_STARTS:
+        for end in WINDOW_ENDS:
+            if end <= start:
+                continue
             preds = {k: classify(k, start, end, BASELINE_B)[0] for k in CASES}
             ok = all(preds[k] == CASES[k]["expected"] for k in CASES)
             window_scan.append({"start_us": start, "end_us": end, "stable": ok})
 
     margin_rows = []
-    for key in ['C1', 'C2', 'C3', 'C4']:
+    for key in ['a', 'b', 'c', 'd']:
         pred, margin = classify(key, BASELINE_WINDOW[0], BASELINE_WINDOW[1], BASELINE_B)
         margin_rows.append(
             {
@@ -165,10 +177,15 @@ def analyze_xor_robustness():
     window_df = pd.DataFrame(window_scan)
     margins_df = pd.DataFrame(margin_rows)
 
-    threshold_df.to_csv(DATA / "xor_threshold_scan.csv", index=False)
-    window_df.to_csv(DATA / "xor_window_scan.csv", index=False)
-    margins_df.to_csv(DATA / "xor_margin_summary.csv", index=False)
+    threshold_df.to_csv(SCRIPT_DIR / "xor_threshold_scan.csv", index=False)
+    window_df.to_csv(SCRIPT_DIR / "xor_window_scan.csv", index=False)
+    margins_df.to_csv(SCRIPT_DIR / "xor_margin_summary.csv", index=False)
     return margins_df, threshold_df, window_df
+
+
+def copy_figure(src: Path, dst: Path):
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(src, dst)
 
 def plot_xor_combined_pdf():
     margins_df, threshold_df, window_df = analyze_xor_robustness()
@@ -198,7 +215,7 @@ def plot_xor_combined_pdf():
         ax1.axvspan(stable_thresholds.min() * 1e3, stable_thresholds.max() * 1e3,
                     alpha=0.20, color='#B0BEC5', zorder=0)
 
-    for key in ['C1', 'C2', 'C3', 'C4']:
+    for key in ['a', 'b', 'c', 'd']:
         ax1.plot(
             thresholds * 1e3,
             np.array(raw_margin_map[key]) * 1e4,
@@ -213,7 +230,7 @@ def plot_xor_combined_pdf():
     ax1.axhline(y=0, color='#A61B29', linestyle='--', linewidth=1.8, zorder=2)
     ax1.axvline(x=BASELINE_B * 1e3, color='#6A1B9A', linestyle=':', linewidth=1.8, zorder=2)
 
-    for key in ['C1', 'C2', 'C3', 'C4']:
+    for key in ['a', 'b', 'c', 'd']:
         _, base_margin = classify(key, BASELINE_WINDOW[0], BASELINE_WINDOW[1], BASELINE_B)
         ax1.plot(
             [BASELINE_B * 1e3], [base_margin * 1e4],
@@ -226,7 +243,7 @@ def plot_xor_combined_pdf():
         midx = 0.5 * (stable_thresholds.min() + stable_thresholds.max()) * 1e3
         ax1.text(
             midx, ylim[1] - 0.08 * (ylim[1] - ylim[0]),
-            f'Stable XOR region: {stable_thresholds.min()*1e3:.2f}–{stable_thresholds.max()*1e3:.2f}',
+            f'Stable XOR region: {stable_thresholds.min()*1e3:.2f}-{stable_thresholds.max()*1e3:.2f}',
             ha='center', va='top', fontsize=9.5,
             bbox=dict(boxstyle='round,pad=0.2', facecolor='white', edgecolor='gray', alpha=0.92),
         )
@@ -236,8 +253,8 @@ def plot_xor_combined_pdf():
         bbox=dict(boxstyle='round,pad=0.18', facecolor='white', edgecolor='gray', alpha=0.92),
     )
 
-    ax1.set_xlabel(r'Threshold b ($\times 10^{-3}$)',fontweight='bold')
-    ax1.set_ylabel(r'Raw margin $\kappa$ ($\times 10^{-4}$)',fontweight='bold')
+    ax1.set_xlabel(r'Threshold $b$ ($\times 10^{-3}$)')
+    ax1.set_ylabel(r'Raw margin $\kappa$ ($\times 10^{-4}$)')
     ax1.xaxis.set_major_locator(MaxNLocator(7))
     ax1.xaxis.set_minor_locator(AutoMinorLocator(2))
     ax1.yaxis.set_major_locator(MaxNLocator(6))
@@ -249,10 +266,10 @@ def plot_xor_combined_pdf():
     ax1.tick_params(axis='both', which='minor', length=2.5, width=0.8)
 
     legend_handles = [
-        Line2D([0], [0], color=COLORS['C1'], lw=2.5, label=LABELS['C1']),
-        Line2D([0], [0], color=COLORS['C2'], lw=2.5, label=LABELS['C2']),
-        Line2D([0], [0], color=COLORS['C3'], lw=2.5, label=LABELS['C3']),
-        Line2D([0], [0], color=COLORS['C4'], lw=2.5, label=LABELS['C4']),
+        Line2D([0], [0], color=COLORS['a'], lw=2.5, label=LABELS['a']),
+        Line2D([0], [0], color=COLORS['b'], lw=2.5, label=LABELS['b']),
+        Line2D([0], [0], color=COLORS['c'], lw=2.5, label=LABELS['c']),
+        Line2D([0], [0], color=COLORS['d'], lw=2.5, label=LABELS['d']),
         Line2D([0], [0], color='#A61B29', lw=1.8, linestyle='--', label='Decision boundary'),
         Line2D([0], [0], color='#6A1B9A', lw=1.8, linestyle=':', label='Baseline threshold'),
     ]
@@ -273,49 +290,71 @@ def plot_xor_combined_pdf():
         fontsize=8.8,
     )
 
-    starts = np.arange(40, 50)
-    ends = np.arange(60, 70)
-    robust_grid = np.zeros((len(ends), len(starts)))
+    starts = WINDOW_STARTS
+    ends = WINDOW_ENDS
+    robust_grid = np.full((len(ends), len(starts)), np.nan)
     for i, end in enumerate(ends):
         for j, start in enumerate(starts):
+            if end <= start:
+                continue
             sms = [signed_margin(key, start, end, BASELINE_B) for key in CASES]
             robust_grid[i, j] = min(sms) * 1e4
 
-    vmin = float(np.min(robust_grid))
-    vmax = float(np.max(robust_grid))
+    finite_grid = robust_grid[np.isfinite(robust_grid)]
+    if finite_grid.size == 0:
+        raise RuntimeError("Window robustness grid contains no valid windows.")
+    vmin = float(np.nanpercentile(finite_grid, 5))
+    vmax = float(np.nanpercentile(finite_grid, 95))
+    if not (vmin < 0 < vmax):
+        vmin = float(np.nanmin(finite_grid))
+        vmax = float(np.nanmax(finite_grid))
     if vmin == vmax:
-        vmin -= 1
-        vmax += 1
+        span = max(abs(vmin), 1.0) * 0.1
+        vmin -= span
+        vmax += span
+    cmap = plt.get_cmap("RdBu_r").copy()
+    cmap.set_bad(color="#f0f0f0")
+    norm = colors.TwoSlopeNorm(vmin=vmin, vcenter=0.0, vmax=vmax)
 
     im = ax2.imshow(
         robust_grid,
         origin='lower',
         aspect='auto',
-        extent=[starts.min()-0.5, starts.max()+0.5, ends.min()-0.5, ends.max()+0.5],
-        cmap='viridis',
+        extent=[
+            starts.min() - 0.5 * WINDOW_SCAN_STEP,
+            starts.max() + 0.5 * WINDOW_SCAN_STEP,
+            ends.min() - 0.5 * WINDOW_SCAN_STEP,
+            ends.max() + 0.5 * WINDOW_SCAN_STEP,
+        ],
+        cmap=cmap,
         interpolation='nearest',
-        vmin=vmin,
-        vmax=vmax,
+        norm=norm,
         zorder=1,
     )
 
     ax2.plot(
         BASELINE_WINDOW[0], BASELINE_WINDOW[1],
-        marker='s', markersize=6.5,
-        markerfacecolor='none', markeredgecolor='#C62828',
-        markeredgewidth=1.8, zorder=3
+        marker='s', markersize=9.2,
+        markerfacecolor='none', markeredgecolor='black',
+        markeredgewidth=2.8, zorder=4
+    )
+    ax2.plot(
+        BASELINE_WINDOW[0], BASELINE_WINDOW[1],
+        marker='s', markersize=7.0,
+        markerfacecolor='none', markeredgecolor='#00E5FF',
+        markeredgewidth=2.2, zorder=5
     )
 
-    cbar = fig.colorbar(im, cax=cax)
-    cbar.set_label(r'Minimum signed margin $\mathbf{\kappa}$ ($\mathbf{\times 10^{-4}}$)', fontweight='bold', fontsize=14)
+    cbar = fig.colorbar(im, cax=cax, extend='both')
+    cbar.set_label(r'Minimum signed margin $\kappa$ ($\times 10^{-4}$)', fontsize=14)
     cbar.ax.tick_params(labelsize=11, width=1.2, length=3.5)
     for spine in cbar.ax.spines.values():
         spine.set_linewidth(1.2)
 
-    ax2.set_xlabel(r'Window start time ($\mathrm{\mu}$s)',fontweight='bold')
-    ax2.set_ylabel(r'Window end time ($\mathrm{\mu}$s)',fontweight='bold')
-    ax2.set_xticks(starts)
-    ax2.set_yticks(ends)
+    ax2.set_xlabel(r'Window start time (μs)')
+    ax2.set_ylabel(r'Window end time (μs)')
+    ax2.set_xticks(np.arange(starts.min(), starts.max() + 1, 5))
+    ax2.set_yticks(np.arange(ends.min(), ends.max() + 1, 5))
     ax2.set_facecolor('white')
     ax2.grid(True, alpha=0.48, linestyle='--', linewidth=0.45)
     ax2.tick_params(axis='both', which='major', length=4.5, width=1.4)
@@ -326,8 +365,8 @@ def plot_xor_combined_pdf():
 
     ax2.legend(
         handles=[
-            Line2D([0], [0], marker='s', color='none', markeredgecolor='#C62828',
-                   markerfacecolor='none', markeredgewidth=1.8, markersize=6.3,
+            Line2D([0], [0], marker='s', color='black', markeredgecolor='#00E5FF',
+                   markerfacecolor='none', markeredgewidth=2.0, markersize=7.2,
                    label='Baseline window')
         ],
         loc='upper left',
@@ -347,10 +386,18 @@ def plot_xor_combined_pdf():
     ax2.text(-0.11, 1.03, 'B', transform=ax2.transAxes, fontsize=13, fontweight='bold')
 
     fig.patch.set_facecolor('white')
-    fig.tight_layout()
+    fig.subplots_adjust(left=0.08, right=0.93, bottom=0.16, top=0.93, wspace=0.30)
 
-    out_pdf = DATA / 'Fig.S6.pdf'
-    fig.savefig(out_pdf, bbox_inches='tight', format='pdf')
+    out_pdf = SCRIPT_DIR / 'Fig.S6.pdf'
+    fig.savefig(out_pdf, bbox_inches='tight', format='pdf', dpi=600)
+    copy_figure(out_pdf, SUPPLEMENTARY_OUTPUT_DIR / "Fig.S6.pdf")
+    copy_figure(out_pdf, SCIENCE_TEMPLATE_DIR / "Fig.S6.pdf")
+    copy_figure(out_pdf, SCIENCE_V2_FIGURES_DIR / "FigS6.pdf")
+    import os
+    HERE = os.path.dirname(os.path.abspath(__file__))
+    save_path = os.path.join(HERE, "Fig.S6.svg")
+
+    plt.savefig(save_path, bbox_inches='tight', dpi=600)
     plt.show()
     plt.close(fig)
     return out_pdf, margins_df, threshold_df, window_df
@@ -363,6 +410,7 @@ def main():
 
     stable_thresholds = threshold_df.loc[threshold_df["stable"], "threshold"]
     stable_windows = window_df.loc[window_df["stable"]]
+    
     print("=== XOR local robustness summary ===")
     if len(stable_thresholds) > 0:
         print(f"Stable threshold range: {stable_thresholds.min():.5f} to {stable_thresholds.max():.5f}")

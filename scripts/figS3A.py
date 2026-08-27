@@ -252,7 +252,7 @@ plt.rcParams.update({
     'figure.titlesize': 20,
     'font.family': 'serif',
     'font.serif': ['Arial', 'DejaVu Serif'],
-    'mathtext.fontset': 'stix',
+    'mathtext.fontset': 'custom',
     'axes.linewidth': 2,
     'grid.alpha': 0.3
 })
@@ -276,8 +276,7 @@ fig, ax = plt.subplots(figsize=(12, 7), dpi=200)
 ax.plot(t,gamma1, 
         color="#1F11E6",  # 专业橙色
         linewidth=5, 
-        label=r'γ of state $\mathbf{|1\rangle}$ ', 
-        
+        label=r'$\gamma$ of state $\mathrm{|1\rangle}$ ', 
         alpha=0.95, 
         zorder=3,
         solid_capstyle='round')
@@ -289,7 +288,7 @@ ax2 = ax.twinx()
 ax2.plot(t, J2, 
          color="#EE0AE3", 
          linewidth=5, 
-         label=r'$\mathbf{J_2}$ waveform', 
+         label=r'$J_2$ waveform', 
          alpha=0.95, 
          zorder=2,
          linestyle='--')
@@ -341,9 +340,9 @@ ax2.plot(t, J2,
 # plt.ylabel(r'$\gamma$(MHz) ')
 
 # 6. 坐标轴标签和标题
-ax.set_xlabel('Time(μs)', fontweight='bold', labelpad=5)
+ax.set_xlabel('Time (μs)',  labelpad=5)
 # ax.set_ylabel('Signal', fontweight='bold', labelpad=5)
-ax.set_ylabel(r'γ(MHz)', fontweight='bold', labelpad=5)
+ax.set_ylabel(r'$\gamma$ (MHz)', labelpad=5)
 # ax.set_title('Phasic Mode', 
 #             fontweight='bold', 
 #             pad=5,
@@ -357,7 +356,7 @@ ax.set_ylabel(r'γ(MHz)', fontweight='bold', labelpad=5)
 # # plt.xlabel('Time/us')
 # # plt.legend()
 # 设置右侧y轴
-ax2.set_ylabel(r'$\mathbf{J_2}$(MHz)', fontweight='bold', labelpad=5)
+ax2.set_ylabel(r'$J_2$(MHz)', labelpad=5)
 ax2.yaxis.set_major_formatter(ScalarFormatter(useMathText=True))
 ax2.yaxis.set_major_locator(MaxNLocator(6))
 ax2.yaxis.set_minor_locator(AutoMinorLocator(2))
@@ -375,9 +374,9 @@ ax2.ticklabel_format(style='sci', axis='y', scilimits=(-2,2))
 lines1, labels1 = ax.get_legend_handles_labels()
 lines2, labels2 = ax2.get_legend_handles_labels()
 ax2.legend(lines1 + lines2, labels1 + labels2, loc='lower right', 
-           prop={'weight': 'bold'}, frameon=True, fancybox=True, shadow=True, 
+           frameon=True, fancybox=True, shadow=True, 
            framealpha=0.95, edgecolor='gray', facecolor='white', borderpad=0.5, 
-           labelspacing=0.5, fontsize=33)
+           labelspacing=0.5, fontsize=25)
 
 
 # legend2 = ax2.legend(
@@ -432,6 +431,12 @@ ax.tick_params(axis='both', which='minor', length=4, width=1)
 ax2.tick_params(axis='y', which='major', length=6, width=2)
 ax2.tick_params(axis='y', which='minor', length=4, width=1)
 plt.tight_layout()
+import os
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+save_path = os.path.join(HERE, "FigS3A.svg")
+
+plt.savefig(save_path, bbox_inches='tight')
 # plt.savefig('phasic_signal.svg', format='svg', bbox_inches='tight')
 # plt.savefig('phasic_voltage.svg', format='svg', bbox_inches='tight')
 # plt.savefig('phasic_gamma_J2.svg', format='svg', bbox_inches='tight')

@@ -1,9 +1,10 @@
-# Quantum Spiking Neuron Based on a Trapped Ion
+# Programmable memristive quantum spiking
+dynamics in a trapped ion
 
 This repository contains the code and data required to reproduce the figures and results reported in the paper:
 
-**“Experimental Realization of a Memristive Quantum Spiking
-Neuron with Fast-Dissipation and Slow-Gain Channels.”**
+**“Programmable memristive quantum spiking
+dynamics in a trapped ion.”**
 
 In this work, a  quantum neuron is implemented using a trapped-ion platform.
 By engineering dissipation and gain channels, the system exhibits diverse neuronal firing patterns such as phasic, bursting, and adaptive responses.

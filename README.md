@@ -168,8 +168,8 @@ If you use this code or data in your research, please cite the associated paper:
 
 ```
 @article{Huang2026QuantumNeuron,
-title = {Experimental Realization of a Memristive Quantum Spiking
-Neuron with Fast-Dissipation and Slow-Gain Channels},
+title = {Programmable memristive quantum spiking
+dynamics in a trapped ion},
 author = {Huang, Fuhua and ...},
 journal = {...},
 year = {2026}
